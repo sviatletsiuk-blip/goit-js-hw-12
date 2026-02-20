@@ -10,20 +10,19 @@ import {
   hideLoader,
   showLoadMoreButton,
   hideLoadMoreButton,
-  disableLoadMoreButton,
-  enableLoadMoreButton,
 } from "./js/render-functions.js";
 
 const form = document.querySelector(".form");
 const loadMoreBtn = document.querySelector(".load-more");
 
-let currentPage = 1;
 let currentQuery = "";
+let currentPage = 1;
 let totalHits = 0;
 
 const PER_PAGE = 15;
 
-form.addEventListener("submit", async event => {
+// --- Обробник сабміту форми ---
+form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const query = event.currentTarget.elements["search-text"].value.trim();
@@ -46,7 +45,6 @@ form.addEventListener("submit", async event => {
 
   try {
     const data = await getImagesByQuery(currentQuery, currentPage);
-
     totalHits = data.totalHits;
 
     if (data.hits.length === 0) {
@@ -62,13 +60,17 @@ form.addEventListener("submit", async event => {
 
     const totalPages = Math.ceil(totalHits / PER_PAGE);
 
-    if (currentPage < totalPages) {
-      showLoadMoreButton();
-      enableLoadMoreButton();
-    } else {
+    if (totalPages === 1) {
+      // Якщо лише одна сторінка результатів
+      iziToast.info({
+        message: "We're sorry, but you've reached the end of search results.",
+        position: "topRight",
+      });
       hideLoadMoreButton();
+    } else {
+      showLoadMoreButton();
+      loadMoreBtn.disabled = false;
     }
-
   } catch (error) {
     iziToast.error({
       message: "Something went wrong. Please try again!",
@@ -79,40 +81,40 @@ form.addEventListener("submit", async event => {
   }
 });
 
+// --- Обробник кліку Load More ---
 loadMoreBtn.addEventListener("click", async () => {
-  disableLoadMoreButton();
+  hideLoadMoreButton(); // ховаємо кнопку під час запиту
   showLoader();
 
   currentPage += 1;
 
   try {
     const data = await getImagesByQuery(currentQuery, currentPage);
-
     createGallery(data.hits);
 
     const totalPages = Math.ceil(totalHits / PER_PAGE);
 
     if (currentPage >= totalPages) {
+      // Досягли кінця результатів
       hideLoadMoreButton();
-
       iziToast.info({
-        message:
-          "We're sorry, but you've reached the end of search results.",
+        message: "We're sorry, but you've reached the end of search results.",
         position: "topRight",
       });
     } else {
-      enableLoadMoreButton();
+      showLoadMoreButton();
+      loadMoreBtn.disabled = false; // кнопка знову активна
     }
 
-    // Плавний скрол
+    // Плавна прокрутка після додавання карток
     const card = document.querySelector(".gallery-item");
-    const cardHeight = card.getBoundingClientRect().height;
-
-    window.scrollBy({
-      top: cardHeight * 2,
-      behavior: "smooth",
-    });
-
+    if (card) {
+      const cardHeight = card.getBoundingClientRect().height;
+      window.scrollBy({
+        top: cardHeight * 2,
+        behavior: "smooth",
+      });
+    }
   } catch (error) {
     iziToast.error({
       message: "Something went wrong. Please try again!",
